@@ -1,0 +1,1 @@
+require 'opsworks/deploy/deploy'
