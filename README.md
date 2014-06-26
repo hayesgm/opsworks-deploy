@@ -43,6 +43,13 @@ Then run:
 
 Note, your IAM keys should only allow deploy access to OpsWorks, but you should never check them into source control.
 
+## Testing
+
+Use rspec for test
+
+    rake test
+
+
 ## Contributing
 
 1. Fork it
@@ -50,7 +57,3 @@ Note, your IAM keys should only allow deploy access to OpsWorks, but you should 
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
-
-## TODO
-
-This is a quick alpha.  We need to add test cases to project.

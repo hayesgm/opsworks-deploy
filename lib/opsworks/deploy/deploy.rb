@@ -27,17 +27,17 @@ module Opsworks::Deploy
     return true if deployment_desc.data[:status] == 'successful'
   end
 
-  def self.get_stack
-    if ENV['STACK_ID'].present? && ENV['APP_ID'].present?
+  def self.get_stack(rails_env=nil)
+    if !ENV['STACK_ID'].nil? && !ENV['APP_ID'].nil?
       return {stack_id: ENV['STACK_ID'], app_id: ENV['APP_ID']}
-    elsif File.exists?("#{Rails.root}/config/stacks.json")
+    elsif defined?(Rails) && !rails_env.nil? && File.exists?("#{Rails.root}/config/stacks.json")
       # Try to grab from .stack file
       stacks = JSON(File.read("#{Rails.root}/config/stacks.json"))
-      raise "Missing stacks configuration for #{RAILS_ENV}" if stacks[RAILS_ENV].empty?
+      raise "Missing stacks configuration for #{rails_env}" if stacks[rails_env].empty?
 
-      return stacks[RAILS_ENV].with_indifferent_access
+      return stacks[rails_env]
     else
-      raise "Must set STACK_ID/APP_ID or have config/stacks.json for RAILS_ENV"
+      raise "Must set STACK_ID/APP_ID or have config/stacks.json for rails env `#{rails_env}`"
     end
   end
 
@@ -65,14 +65,16 @@ module Opsworks::Deploy
   def self.deploy(opts={})
     opts = {
       migrate: true,
-      wait: false
+      wait: false,
+      rails_env: nil
     }.merge(opts)
 
-    stack = Opsworks::Deploy.get_stack # Get stack environment
+    stack = Opsworks::Deploy.get_stack(opts[:rails_env]) # Get stack environment
 
     Opsworks::Deploy.configure_aws! # Ensure we are properly configured
-
-    deployment = AWS.ops_works.client.create_deployment( stack_id: stack[:stack_id], app_id: stack[:app_id], command: {name: 'deploy', args: {"migrate" => [opts[:migrate] ? "true" : "false"]}} )
+    p opts
+    p stack
+    deployment = AWS.ops_works.client.create_deployment( stack_id: stack[:stack_id] || stack['stack_id'], app_id: stack[:app_id] || stack['app_id'], command: {name: 'deploy', args: {"migrate" => [ opts[:migrate] ? "true" : "false"] }} )
 
     puts deployment.inspect
 
