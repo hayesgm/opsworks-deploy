@@ -7,7 +7,6 @@ describe 'opsworks:deploy rake task' do
 
   before(:all) do
     load File.expand_path("../../lib/opsworks/tasks/opsworks.rake", __FILE__)
-    Rake::Task.define_task(:environment)
   end
 
   after(:each) do
@@ -15,14 +14,14 @@ describe 'opsworks:deploy rake task' do
   end
 
   it "should call invoke with argument when given arg" do
-    expect(Opsworks::Deploy).to receive(:deploy).with(rails_env: 'test-1', migrate: false)
+    expect(Opsworks::Deploy).to receive(:deploy).with(env: 'test-1', migrate: false)
     Rake::Task["opsworks:deploy"].invoke('test-1')
   end
 
   it "should call invoke with argument when given env" do
     begin
       ENV['RAILS_ENV'] = "test-2"
-      expect(Opsworks::Deploy).to receive(:deploy).with(rails_env: 'test-2', migrate: false)
+      expect(Opsworks::Deploy).to receive(:deploy).with(env: 'test-2', migrate: false)
       Rake::Task["opsworks:deploy"].invoke
     ensure
       ENV['RAILS_ENV'] = nil
@@ -43,12 +42,10 @@ describe 'opsworks:deploy rake task' do
       }
 
       # Mock ENV vars
-      ENV['RAILS_ENV'] = "test-3"
+      ENV['ENV'] = "test-3"
       ENV['IAM_KEY'] = ENV['IAM_SECRET'] = "a"
 
-      # Allow rails-generated config
-      Rails = double("rails")
-      expect(Rails).to receive(:root).and_return(".").twice
+      # Allow file config
       expect(File).to receive(:exists?).and_return(true)
       expect(File).to receive(:read).and_return(config.to_json)
 
@@ -67,7 +64,7 @@ describe 'opsworks:deploy rake task' do
       # Call rake task
       Rake::Task["opsworks:deploy"].invoke
     ensure # clear ENV vars
-      ENV['RAILS_ENV'] = ENV['IAM_KEY'] = ENV['IAM_SECRET'] = nil
+      ENV['ENV'] = ENV['IAM_KEY'] = ENV['IAM_SECRET'] = nil
     end
   end
 
@@ -83,9 +80,7 @@ describe 'opsworks:deploy rake task' do
       # Mock ENV vars
       ENV['IAM_KEY'] = ENV['IAM_SECRET'] = "a"
 
-      # Allow rails-generated config
-      Rails = double("rails")
-      expect(Rails).to receive(:root).and_return(".").twice
+      # Allow file config
       expect(File).to receive(:exists?).and_return(true)
       expect(File).to receive(:read).and_return(config.to_json)
 

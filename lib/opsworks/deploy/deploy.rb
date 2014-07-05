@@ -27,17 +27,33 @@ module Opsworks::Deploy
     return true if deployment_desc.data[:status] == 'successful'
   end
 
-  def self.get_stack(rails_env=nil)
+  # Look for config/stacks.json or stacks.json
+  def self.get_config_stacks
+    cwd = Dir.getwd
+    files = ["#{cwd}/config/stacks.json","#{cwd}/stacks.json"]
+
+    if !cwd.nil? && cwd.length > 0
+      files.each do |file|
+        if File.exists?(file)
+          return JSON(File.read(file))
+        end
+      end
+    end
+
+    return nil
+  end
+
+  def self.get_stack(env=nil)
+    
+    # First try to get from env, then stack files
     if !ENV['STACK_ID'].nil? && !ENV['APP_ID'].nil?
       return {stack_id: ENV['STACK_ID'], app_id: ENV['APP_ID']}
-    elsif defined?(Rails) && !rails_env.nil? && File.exists?("#{Rails.root}/config/stacks.json")
-      # Try to grab from .stack file
-      stacks = JSON(File.read("#{Rails.root}/config/stacks.json"))
-      raise "Missing stacks configuration for #{rails_env}" if stacks[rails_env].empty?
+    elsif stacks = get_config_stacks
+      raise "Missing stacks configuration for #{env} in stacks.json" if stacks[env].nil?
 
-      return stacks[rails_env]
+      return stacks[env]
     else
-      raise "Must set STACK_ID/APP_ID or have config/stacks.json for rails env `#{rails_env}`"
+      raise "Must set STACK_ID and APP_ID or have config/stacks.json for env `#{env}`"
     end
   end
 
@@ -66,14 +82,13 @@ module Opsworks::Deploy
     opts = {
       migrate: true,
       wait: false,
-      rails_env: nil
+      env: nil
     }.merge(opts)
 
-    stack = Opsworks::Deploy.get_stack(opts[:rails_env]) # Get stack environment
+    stack = Opsworks::Deploy.get_stack(opts[:env]) # Get stack environment
 
     Opsworks::Deploy.configure_aws! # Ensure we are properly configured
-    p opts
-    p stack
+    
     deployment = AWS.ops_works.client.create_deployment( stack_id: stack[:stack_id] || stack['stack_id'], app_id: stack[:app_id] || stack['app_id'], command: {name: 'deploy', args: {"migrate" => [ opts[:migrate] ? "true" : "false"] }} )
 
     puts deployment.inspect

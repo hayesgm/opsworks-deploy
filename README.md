@@ -39,9 +39,17 @@ config/stacks.json
 
 Then run:
 
-    RAILS_ENV=staging AWS_CONFIG_FILE=~/.aws_config rake opsworks:deploy
+    ENV=staging AWS_CONFIG_FILE=~/.aws_config rake opsworks:deploy
 
 Note, your IAM keys should only allow deploy access to OpsWorks, but you should never check them into source control.
+
+## Without Rails
+
+To use with other ruby applications, e.g. Sinatra, add the following line to your `Rakefile`:
+
+     require "opsworks/tasks"
+
+This will load the rake task like above.
 
 ## Testing
 
