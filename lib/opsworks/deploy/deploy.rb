@@ -75,21 +75,47 @@ module Opsworks::Deploy
   end
 
   def self.deploy(opts={})
-    opts = {
-      migrate: true,
-      wait: false,
-      env: nil
-    }.merge(opts)
+    Deployment.new(opts).deploy
+  end
 
-    stack = Opsworks::Deploy.get_stack(opts[:env]) # Get stack environment
+  class Deployment
+    attr_reader :options
 
-    Opsworks::Deploy.configure_aws! # Ensure we are properly configured
-    
-    deployment = AWS.ops_works.client.create_deployment( stack_id: stack[:stack_id] || stack['stack_id'], app_id: stack[:app_id] || stack['app_id'], command: {name: 'deploy', args: {"migrate" => [ opts[:migrate] ? "true" : "false"] }} )
+    def initialize(options)
+      @options = {
+        migrate: true,
+        wait: false,
+        env: nil
+      }.merge(options)
 
-    puts deployment.inspect
+      Opsworks::Deploy.configure_aws! # Ensure we are properly configured
+    end
 
-    Opsworks::Deploy.wait_on_deployment(deployment) if opts[:wait]
+    def deploy
+      deployment = AWS.ops_works.client.create_deployment(arguments)
+
+      puts deployment.inspect
+
+      Opsworks::Deploy.wait_on_deployment(deployment) if options[:wait]
+    end
+
+    private
+
+    def arguments
+      {
+        stack_id: stack['stack_id'],
+        app_id: stack['app_id'],
+        command: command
+      }
+    end
+
+    def command
+      {name: 'deploy', args: {'migrate' => [options[:migrate] ? 'true' : 'false']}}
+    end
+
+    def stack
+      @stack ||= Opsworks::Deploy.get_stack(options[:env]) # Get stack environment
+    end
   end
 
 end
