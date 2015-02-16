@@ -7,8 +7,6 @@ module Opsworks::Deploy
 
   def self.wait_on_deployment(deployment)
     deployment_id = deployment.data[:deployment_id]
-    deployment_desc = nil
-
     while true
       deployment_desc = AWS.ops_works.client.describe_deployments(deployment_ids: [deployment_id])
       
@@ -23,8 +21,6 @@ module Opsworks::Deploy
         raise "Failed to run deployment: #{deployment_id} - #{status}"
       end
     end
-
-    return true if deployment_desc.data[:status] == 'successful'
   end
 
   # Look for config/stacks.json or stacks.json
