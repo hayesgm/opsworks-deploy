@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Geoff Hayes"]
   spec.email         = ["hayesgm@gmail.com"]
   spec.description   = %q{Quick and easy rake task for deploying to AWS OpsWorks}
-  spec.summary       = %q{A quick rake task that will deploy to AWS OpsWorks.  This can be added as a post-step in Continuous Integration.  `rake opsworks:deply`}
+  spec.summary       = %q{A quick rake task that will deploy to AWS OpsWorks.  This can be added as a post-step in Continuous Integration.  `rake opsworks:deploy`}
   spec.homepage      = "https://github.com/hayesgm/opsworks-deploy"
   spec.license       = "MIT"
 
