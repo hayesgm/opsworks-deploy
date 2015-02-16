@@ -2,14 +2,14 @@ require "opsworks/deploy/version"
 require 'aws-sdk'
 
 module Opsworks::Deploy
-  
-  require 'opsworks/deploy/railtie' if defined?(Rails)    
+
+  require 'opsworks/deploy/railtie' if defined?(Rails)
 
   def self.wait_on_deployment(deployment)
     deployment_id = deployment.data[:deployment_id]
     while true
       deployment_desc = AWS.ops_works.client.describe_deployments(deployment_ids: [deployment_id])
-      
+
       status = deployment_desc.data[:deployments].first[:status]
 
       case status
@@ -40,7 +40,7 @@ module Opsworks::Deploy
   end
 
   def self.get_stack(env=nil)
-    
+
     # First try to get from env, then stack files
     if !ENV['STACK_ID'].nil? && !ENV['APP_ID'].nil?
       return {stack_id: ENV['STACK_ID'], app_id: ENV['APP_ID']}
