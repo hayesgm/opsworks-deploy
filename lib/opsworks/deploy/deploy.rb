@@ -43,7 +43,7 @@ module Opsworks::Deploy
 
     # First try to get from env, then stack files
     if !ENV['STACK_ID'].nil? && !ENV['APP_ID'].nil?
-      return {stack_id: ENV['STACK_ID'], app_id: ENV['APP_ID']}
+      return {'stack_id' => ENV['STACK_ID'], 'app_id' => ENV['APP_ID']}
     elsif stacks = get_config_stacks
       raise "Missing stacks configuration for #{env} in stacks.json" if stacks[env].nil?
 
