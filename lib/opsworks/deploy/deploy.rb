@@ -6,7 +6,6 @@ module Opsworks::Deploy
 
   require 'opsworks/deploy/railtie' if defined?(Rails)
 
-
   def self.configure_aws!
     # First, try to pull these from the environment
     iam_key = ENV['IAM_KEY']
@@ -33,20 +32,21 @@ module Opsworks::Deploy
   end
 
   class Deployment
-    attr_reader :options
+    attr_reader :client, :deployment, :options
 
-    def initialize(options)
+    def initialize(options, client = AWS.ops_works.client)
       @options = {
         migrate: true,
         wait: false,
         env: nil
       }.merge(options)
+      @client = client
 
       Opsworks::Deploy.configure_aws!
     end
 
     def deploy
-      @deployment = AWS.ops_works.client.create_deployment(arguments)
+      @deployment = client.create_deployment(arguments)
       puts @deployment.inspect
       wait_on_deployment if options[:wait]
     end
@@ -100,7 +100,7 @@ module Opsworks::Deploy
     def wait_on_deployment
       deployment_id = deployment.data[:deployment_id]
       loop do
-        deployment_description = AWS.ops_works.client.describe_deployments(
+        deployment_description = client.describe_deployments(
             deployment_ids: [deployment_id]
         )
         status = deployment_description.data[:deployments].first[:status]
