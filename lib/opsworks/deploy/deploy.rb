@@ -25,6 +25,7 @@ module Opsworks::Deploy
   end
 
   def self.deploy(opts={})
+    Opsworks::Deploy.configure_aws!
     Deployment.new(opts).deploy
   end
 
@@ -38,8 +39,6 @@ module Opsworks::Deploy
         env: nil
       }.merge(options)
       @client = client
-
-      Opsworks::Deploy.configure_aws!
     end
 
     def deploy
