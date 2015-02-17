@@ -2,26 +2,9 @@ require "opsworks/deploy/version"
 require 'aws-sdk'
 
 module Opsworks::Deploy
+  DEPLOYMENT_POLL_INTERVAL = 10
 
   require 'opsworks/deploy/railtie' if defined?(Rails)
-
-  def self.wait_on_deployment(deployment)
-    deployment_id = deployment.data[:deployment_id]
-    while true
-      deployment_desc = AWS.ops_works.client.describe_deployments(deployment_ids: [deployment_id])
-
-      status = deployment_desc.data[:deployments].first[:status]
-
-      case status
-      when 'running'
-        sleep 10
-      when 'successful'
-        return true
-      else
-        raise "Failed to run deployment: #{deployment_id} - #{status}"
-      end
-    end
-  end
 
 
   def self.configure_aws!
@@ -63,11 +46,9 @@ module Opsworks::Deploy
     end
 
     def deploy
-      deployment = AWS.ops_works.client.create_deployment(arguments)
-
-      puts deployment.inspect
-
-      Opsworks::Deploy.wait_on_deployment(deployment) if options[:wait]
+      @deployment = AWS.ops_works.client.create_deployment(arguments)
+      puts @deployment.inspect
+      wait_on_deployment if options[:wait]
     end
 
     private
@@ -114,6 +95,23 @@ module Opsworks::Deploy
     def configured_environments
       files = Dir['config/stacks.json','stacks.json']
       file = files.first and JSON.parse(File.read(file))
+    end
+
+    def wait_on_deployment
+      deployment_id = deployment.data[:deployment_id]
+      loop do
+        deployment_description = AWS.ops_works.client.describe_deployments(
+            deployment_ids: [deployment_id]
+        )
+        status = deployment_description.data[:deployments].first[:status]
+
+        case status
+        when 'running' then sleep DEPLOYMENT_POLL_INTERVAL
+        when 'successful' then break
+        else
+          raise "Failed to run deployment: #{deployment_id} - #{status}"
+        end
+      end
     end
   end
 
