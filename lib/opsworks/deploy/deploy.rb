@@ -59,7 +59,7 @@ module Opsworks::Deploy
         env: nil
       }.merge(options)
 
-      Opsworks::Deploy.configure_aws! # Ensure we are properly configured
+      Opsworks::Deploy.configure_aws!
     end
 
     def deploy
@@ -77,11 +77,21 @@ module Opsworks::Deploy
         stack_id: configuration['stack_id'],
         app_id: configuration['app_id'],
         command: command
-      }
+      }.tap do |args|
+        args[:custom_json] = custom_json if custom_json?
+      end
     end
 
     def command
       {name: 'deploy', args: {'migrate' => [options[:migrate] ? 'true' : 'false']}}
+    end
+
+    def custom_json
+      configuration['custom_json'].to_json
+    end
+
+    def custom_json?
+      configuration.has_key?('custom_json')
     end
 
     def configuration
