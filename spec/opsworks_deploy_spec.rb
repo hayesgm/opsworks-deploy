@@ -46,7 +46,7 @@ describe 'opsworks:deploy rake task' do
       ENV['IAM_KEY'] = ENV['IAM_SECRET'] = "a"
 
       # Allow file config
-      expect(File).to receive(:exists?).and_return(true)
+      allow(Dir).to receive(:[]).and_return(['config/stacks.json'])
       expect(File).to receive(:read).and_return(config.to_json)
 
       expected_params = { stack_id: "sid", app_id: "aid", command: {name: 'deploy', args: {"migrate" => [ "false" ] } } }
@@ -81,7 +81,7 @@ describe 'opsworks:deploy rake task' do
       ENV['IAM_KEY'] = ENV['IAM_SECRET'] = "a"
 
       # Allow file config
-      expect(File).to receive(:exists?).and_return(true)
+      allow(Dir).to receive(:[]).and_return(['config/stacks.json'])
       expect(File).to receive(:read).and_return(config.to_json)
 
       expected_params = { stack_id: "sid", app_id: "aid", command: {name: 'deploy', args: {"migrate" => [ "true" ] } } }

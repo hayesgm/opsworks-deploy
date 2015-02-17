@@ -23,35 +23,6 @@ module Opsworks::Deploy
     end
   end
 
-  # Look for config/stacks.json or stacks.json
-  def self.get_config_stacks
-    cwd = Dir.getwd
-    files = ["#{cwd}/config/stacks.json","#{cwd}/stacks.json"]
-
-    if !cwd.nil? && cwd.length > 0
-      files.each do |file|
-        if File.exists?(file)
-          return JSON(File.read(file))
-        end
-      end
-    end
-
-    return nil
-  end
-
-  def self.get_stack(env=nil)
-
-    # First try to get from env, then stack files
-    if !ENV['STACK_ID'].nil? && !ENV['APP_ID'].nil?
-      return {'stack_id' => ENV['STACK_ID'], 'app_id' => ENV['APP_ID']}
-    elsif stacks = get_config_stacks
-      raise "Missing stacks configuration for #{env} in stacks.json" if stacks[env].nil?
-
-      return stacks[env]
-    else
-      raise "Must set STACK_ID and APP_ID or have config/stacks.json for env `#{env}`"
-    end
-  end
 
   def self.configure_aws!
     # First, try to pull these from the environment
@@ -103,8 +74,8 @@ module Opsworks::Deploy
 
     def arguments
       {
-        stack_id: stack['stack_id'],
-        app_id: stack['app_id'],
+        stack_id: configuration['stack_id'],
+        app_id: configuration['app_id'],
         command: command
       }
     end
@@ -113,8 +84,26 @@ module Opsworks::Deploy
       {name: 'deploy', args: {'migrate' => [options[:migrate] ? 'true' : 'false']}}
     end
 
-    def stack
-      @stack ||= Opsworks::Deploy.get_stack(options[:env]) # Get stack environment
+    def configuration
+      @configuration ||= if !ENV['STACK_ID'].nil? && !ENV['APP_ID'].nil?
+        {'stack_id' => ENV['STACK_ID'], 'app_id' => ENV['APP_ID']}
+      elsif stacks = configured_environments
+        stacks.fetch(environment) do
+          raise "Missing stacks configuration for #{environment} in stacks.json"
+        end
+      else
+        raise "Must set STACK_ID and APP_ID or have config/stacks.json for env `#{environment}`"
+      end
+    end
+
+    def environment
+      options.fetch(:env)
+    end
+
+    # Look for config/stacks.json or stacks.json
+    def configured_environments
+      files = Dir['config/stacks.json','stacks.json']
+      file = files.first and JSON.parse(File.read(file))
     end
   end
 
