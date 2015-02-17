@@ -21,10 +21,7 @@ module Opsworks::Deploy
     raise ArgumentError, "Must set IAM_KEY environment variable" if iam_key.nil? || iam_key.length == 0
     raise ArgumentError, "Must set IAM_SECRET environment variable" if iam_secret.nil? || iam_secret.length == 0
 
-    AWS.config({
-      access_key_id: iam_key,
-      secret_access_key: iam_secret,
-    })
+    AWS.config(access_key_id: iam_key, secret_access_key: iam_secret)
   end
 
   def self.deploy(opts={})
