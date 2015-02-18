@@ -2,60 +2,9 @@ require "opsworks/deploy/version"
 require 'aws-sdk'
 
 module Opsworks::Deploy
-  
-  require 'opsworks/deploy/railtie' if defined?(Rails)    
+  DEPLOYMENT_POLL_INTERVAL = 10
 
-  def self.wait_on_deployment(deployment)
-    deployment_id = deployment.data[:deployment_id]
-    deployment_desc = nil
-
-    while true
-      deployment_desc = AWS.ops_works.client.describe_deployments(deployment_ids: [deployment_id])
-      
-      status = deployment_desc.data[:deployments].first[:status]
-
-      case status
-      when 'running'
-        sleep 10
-      when 'successful'
-        return true
-      else
-        raise "Failed to run deployment: #{deployment_id} - #{status}"
-      end
-    end
-
-    return true if deployment_desc.data[:status] == 'successful'
-  end
-
-  # Look for config/stacks.json or stacks.json
-  def self.get_config_stacks
-    cwd = Dir.getwd
-    files = ["#{cwd}/config/stacks.json","#{cwd}/stacks.json"]
-
-    if !cwd.nil? && cwd.length > 0
-      files.each do |file|
-        if File.exists?(file)
-          return JSON(File.read(file))
-        end
-      end
-    end
-
-    return nil
-  end
-
-  def self.get_stack(env=nil)
-    
-    # First try to get from env, then stack files
-    if !ENV['STACK_ID'].nil? && !ENV['APP_ID'].nil?
-      return {stack_id: ENV['STACK_ID'], app_id: ENV['APP_ID']}
-    elsif stacks = get_config_stacks
-      raise "Missing stacks configuration for #{env} in stacks.json" if stacks[env].nil?
-
-      return stacks[env]
-    else
-      raise "Must set STACK_ID and APP_ID or have config/stacks.json for env `#{env}`"
-    end
-  end
+  require 'opsworks/deploy/railtie' if defined?(Rails)
 
   def self.configure_aws!
     # First, try to pull these from the environment
@@ -72,28 +21,94 @@ module Opsworks::Deploy
     raise ArgumentError, "Must set IAM_KEY environment variable" if iam_key.nil? || iam_key.length == 0
     raise ArgumentError, "Must set IAM_SECRET environment variable" if iam_secret.nil? || iam_secret.length == 0
 
-    AWS.config({
-      access_key_id: iam_key,
-      secret_access_key: iam_secret,
-    })
+    AWS.config(access_key_id: iam_key, secret_access_key: iam_secret)
   end
 
   def self.deploy(opts={})
-    opts = {
-      migrate: true,
-      wait: false,
-      env: nil
-    }.merge(opts)
+    Opsworks::Deploy.configure_aws!
+    Deployment.new(opts).deploy
+  end
 
-    stack = Opsworks::Deploy.get_stack(opts[:env]) # Get stack environment
+  class Deployment
+    attr_reader :client, :deployment, :options
 
-    Opsworks::Deploy.configure_aws! # Ensure we are properly configured
-    
-    deployment = AWS.ops_works.client.create_deployment( stack_id: stack[:stack_id] || stack['stack_id'], app_id: stack[:app_id] || stack['app_id'], command: {name: 'deploy', args: {"migrate" => [ opts[:migrate] ? "true" : "false"] }} )
+    def initialize(options, client = AWS.ops_works.client)
+      @options = {
+        migrate: true,
+        wait: false,
+        env: nil
+      }.merge(options)
+      @client = client
+    end
 
-    puts deployment.inspect
+    def deploy
+      @deployment = client.create_deployment(arguments)
+      puts @deployment.inspect
+      wait_on_deployment if options[:wait]
+    end
 
-    Opsworks::Deploy.wait_on_deployment(deployment) if opts[:wait]
+    private
+
+    def arguments
+      {
+        stack_id: configuration['stack_id'],
+        app_id: configuration['app_id'],
+        command: command
+      }.tap do |args|
+        args[:custom_json] = custom_json if custom_json?
+      end
+    end
+
+    def command
+      {name: 'deploy', args: {'migrate' => [options[:migrate] ? 'true' : 'false']}}
+    end
+
+    def custom_json
+      configuration['custom_json'].to_json
+    end
+
+    def custom_json?
+      configuration.has_key?('custom_json')
+    end
+
+    def configuration
+      @configuration ||= if !ENV['STACK_ID'].nil? && !ENV['APP_ID'].nil?
+        {'stack_id' => ENV['STACK_ID'], 'app_id' => ENV['APP_ID']}
+      elsif stacks = configured_environments
+        stacks.fetch(environment) do
+          raise "Missing stacks configuration for #{environment} in stacks.json"
+        end
+      else
+        raise "Must set STACK_ID and APP_ID or have config/stacks.json for env `#{environment}`"
+      end
+    end
+
+    def environment
+      options.fetch(:env)
+    end
+
+    # Look for config/stacks.json or stacks.json
+    def configured_environments
+      files = Dir['config/stacks.json','stacks.json']
+      file = files.first and JSON.parse(File.read(file))
+    end
+
+    def wait_on_deployment
+      deployment_id = deployment.data[:deployment_id]
+      loop do
+        deployment_description = client.describe_deployments(
+            deployment_ids: [deployment_id]
+        )
+        status = deployment_description.data[:deployments].first[:status]
+
+        case status
+        when 'running' then sleep DEPLOYMENT_POLL_INTERVAL
+        when 'successful' then break
+        else
+          raise "Failed to run deployment: #{deployment_id} - #{status}"
+        end
+      end
+    end
   end
 
 end

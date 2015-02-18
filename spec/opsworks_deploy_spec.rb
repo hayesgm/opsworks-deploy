@@ -46,7 +46,7 @@ describe 'opsworks:deploy rake task' do
       ENV['IAM_KEY'] = ENV['IAM_SECRET'] = "a"
 
       # Allow file config
-      expect(File).to receive(:exists?).and_return(true)
+      allow(Dir).to receive(:[]).and_return(['config/stacks.json'])
       expect(File).to receive(:read).and_return(config.to_json)
 
       expected_params = { stack_id: "sid", app_id: "aid", command: {name: 'deploy', args: {"migrate" => [ "false" ] } } }
@@ -81,7 +81,7 @@ describe 'opsworks:deploy rake task' do
       ENV['IAM_KEY'] = ENV['IAM_SECRET'] = "a"
 
       # Allow file config
-      expect(File).to receive(:exists?).and_return(true)
+      allow(Dir).to receive(:[]).and_return(['config/stacks.json'])
       expect(File).to receive(:read).and_return(config.to_json)
 
       expected_params = { stack_id: "sid", app_id: "aid", command: {name: 'deploy', args: {"migrate" => [ "true" ] } } }
@@ -101,6 +101,39 @@ describe 'opsworks:deploy rake task' do
     ensure # clear ENV vars
       ENV['RAILS_ENV'] = ENV['IAM_KEY'] = ENV['IAM_SECRET'] = nil
     end
+  end
+
+  it "sets deploy's custom_json" do
+    config = {
+      'test-5' => {
+        'stack_id' => 'a_stack_id',
+        'app_id' => 'an_app_id',
+        'custom_json' => {'deploy' => {'appshortname' => {'database' => {'adapter' => 'postgresql'}}}}
+      }
+    }
+
+    ENV['IAM_KEY'] = 'an_iam_key'
+    ENV['IAM_SECRET'] = 'an_iam_secret'
+
+    allow(Dir).to receive(:[]).and_return(['config/stacks.json'])
+    expect(File).to receive(:read).and_return(config.to_json)
+    ops_works = double("ops_works")
+    client = double("client")
+    allow(AWS).to receive(:ops_works).and_return(ops_works)
+    allow(ops_works).to receive(:client).and_return(client)
+
+    expected_params = {
+      stack_id: 'a_stack_id',
+      app_id: 'an_app_id',
+      command: {name: 'deploy', args: {'migrate' => ['true']}},
+      custom_json: '{"deploy":{"appshortname":{"database":{"adapter":"postgresql"}}}}'
+    }
+
+    expect(client).to receive(:create_deployment).with(expected_params)
+    Rake::Task["opsworks:deploy"].invoke("test-5","true")
+
+    ENV.delete('IAM_KEY')
+    ENV.delete('IAM_SECRET')
   end
 
 end

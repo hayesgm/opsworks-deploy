@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Geoff Hayes"]
   spec.email         = ["hayesgm@gmail.com"]
   spec.description   = %q{Quick and easy rake task for deploying to AWS OpsWorks}
-  spec.summary       = %q{A quick rake task that will deploy to AWS OpsWorks.  This can be added as a post-step in Continuous Integration.  `rake opsworks:deply`}
+  spec.summary       = %q{A quick rake task that will deploy to AWS OpsWorks.  This can be added as a post-step in Continuous Integration.  `rake opsworks:deploy`}
   spec.homepage      = "https://github.com/hayesgm/opsworks-deploy"
   spec.license       = "MIT"
 
@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.add_runtime_dependency 'aws-sdk'
+  spec.add_runtime_dependency 'aws-sdk', '~> 1.62'
   spec.add_runtime_dependency 'json'
 
   spec.add_development_dependency "bundler", "~> 1.3"
