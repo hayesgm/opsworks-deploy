@@ -29,7 +29,7 @@ Or, if you would prefer to add items to config files:
 config/stacks.json
 
     {
-      "staging": { "stack_id": "...", "app_id": "..." }
+      "staging": { "stack_id": "...", "app_id": "...", "custom_json": {} }
     }
 
 ~/.aws_config
